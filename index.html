@@ -1,28 +1,184 @@
 <!DOCTYPE html>
-<html dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>Pi Store</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pi Marketplace</title>
 <script src="https://sdk.minepi.com/pi-sdk.js"></script>
 <style>
-body{background:#1a1a2e;color:white;font-family:Arial;text-align:center;padding:50px}
-button{background:#f0a500;color:black;padding:15px 30px;border:none;border-radius:10px;font-size:18px;cursor:pointer}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:Arial}
+header{background:linear-gradient(135deg,#6b0099,#9b30ff);padding:20px;text-align:center}
+header h1{font-size:28px}
+header p{color:#f0a500;font-size:14px}
+.user-bar{background:#1a1a2e;padding:10px 20px;display:flex;justify-content:space-between;align-items:center}
+.btn-login{background:#f0a500;color:#000;border:none;padding:8px 20px;border-radius:20px;font-weight:bold;cursor:pointer}
+.categories{display:flex;gap:10px;padding:15px;overflow-x:auto}
+.cat{background:#1a1a2e;border:1px solid #6b0099;padding:8px 15px;border-radius:20px;cursor:pointer;white-space:nowrap;font-size:13px}
+.cat.active{background:#6b0099}
+.products{display:grid;grid-template-columns:1fr 1fr;gap:15px;padding:15px}
+.card{background:#1a1a2e;border-radius:15px;padding:15px;border:1px solid #2a2a4a}
+.card-icon{font-size:35px;text-align:center;margin-bottom:10px}
+.card h3{font-size:14px;margin-bottom:5px;color:#f0a500}
+.card p{font-size:11px;color:#aaa;margin-bottom:10px}
+.card .price{color:#9b30ff;font-weight:bold;font-size:16px}
+.card .btn-buy{width:100%;background:#6b0099;color:#fff;border:none;padding:8px;border-radius:10px;cursor:pointer;margin-top:8px;font-size:13px}
+.card .btn-buy:hover{background:#9b30ff}
+.vip{background:linear-gradient(135deg,#1a1a2e,#2a0044);border:1px solid #f0a500;margin:15px;border-radius:15px;padding:20px;text-align:center}
+.vip h2{color:#f0a500;margin-bottom:10px}
+.vip p{color:#aaa;font-size:13px;margin-bottom:15px}
+.vip .btn-vip{background:#f0a500;color:#000;border:none;padding:12px 30px;border-radius:25px;font-weight:bold;cursor:pointer;font-size:16px}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:100;justify-content:center;align-items:center}
+.modal.show{display:flex}
+.modal-box{background:#1a1a2e;border-radius:20px;padding:25px;width:90%;max-width:400px;border:1px solid #6b0099}
+.modal-box h3{color:#f0a500;margin-bottom:15px;text-align:center}
+.modal-box p{color:#aaa;font-size:13px;margin-bottom:20px;text-align:center}
+.modal-btns{display:flex;gap:10px}
+.btn-confirm{flex:1;background:#6b0099;color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer}
+.btn-cancel{flex:1;background:#2a2a4a;color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#6b0099;color:#fff;padding:12px 25px;border-radius:25px;display:none;z-index:200}
+footer{text-align:center;padding:20px;color:#555;font-size:12px}
 </style>
 </head>
 <body>
-<h1>🛍️ متجر Pi</h1>
-<p>marwahamdi301</p>
-<button onclick="loginPi()">دخول بـ Pi 🔴</button>
-<p id="status"></p>
+
+<header>
+  <h1>🛍️ Pi Marketplace</h1>
+  <p>أول سوق متكامل على Pi Network</p>
+</header>
+
+<div class="user-bar">
+  <span id="username">👤 غير مسجل</span>
+  <button class="btn-login" onclick="loginPi()">دخول بـ Pi 🔴</button>
+</div>
+
+<div class="categories">
+  <div class="cat active" onclick="filter('all')">الكل</div>
+  <div class="cat" onclick="filter('bot')">🤖 بوتات</div>
+  <div class="cat" onclick="filter('code')">💻 أكواد</div>
+  <div class="cat" onclick="filter('contract')">📜 عقود</div>
+  <div class="cat" onclick="filter('service')">🔧 خدمات</div>
+</div>
+
+<div class="products" id="products"></div>
+
+<div class="vip">
+  <h2>⚡ باقة VIP</h2>
+  <p>تقارير الحيتان يومياً + تنبيهات فورية + دعم مباشر</p>
+  <button class="btn-vip" onclick="buyProduct('vip','باقة VIP الشهرية',30)">
+    اشترك الآن — 30 π/شهر
+  </button>
+</div>
+
+<footer>Pi Marketplace © 2026 — marwahamdi301</footer>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <h3 id="modal-title">تأكيد الشراء</h3>
+    <p id="modal-desc"></p>
+    <div class="modal-btns">
+      <button class="btn-confirm" onclick="confirmBuy()">✅ تأكيد</button>
+      <button class="btn-cancel" onclick="closeModal()">❌ إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
-Pi.init({version:"2.0",sandbox:true});
-async function loginPi(){
-try{
-const auth=await Pi.authenticate(['username','payments'],(p)=>console.log(p));
-document.getElementById('status').innerHTML='✅ مرحباً '+auth.user.username;
-}catch(e){
-document.getElementById('status').innerHTML='❌ خطأ: '+e.message;
-}}
+Pi.init({version:"2.0", sandbox:true});
+
+let currentUser = null;
+let pendingProduct = null;
+
+const products = [
+  {id:'bot1', cat:'bot', icon:'🤖', name:'بوت مراقبة الحيتان', desc:'تنبيه فوري عند تحرك محافظ كبيرة', price:10},
+  {id:'bot2', cat:'bot', icon:'🔔', name:'بوت تنبيهات Pi', desc:'تنبيهات معاملات في الوقت الفعلي', price:5},
+  {id:'code1', cat:'code', icon:'💻', name:'كود نظام دفع Pi', desc:'نظام دفع كامل جاهز للاستخدام', price:20},
+  {id:'code2', cat:'code', icon:'🌐', name:'قالب متجر Pi', desc:'قالب متجر احترافي قابل للتخصيص', price:15},
+  {id:'contract1', cat:'contract', icon:'📜', name:'عقد اشتراك PiRC2', desc:'عقد ذكي للاشتراكات الشهرية', price:50},
+  {id:'contract2', cat:'contract', icon:'🔐', name:'عقد محفظة آمنة', desc:'عقد ذكي لإدارة المحافظ', price:35},
+  {id:'service1', cat:'service', icon:'🔧', name:'إعداد محفظة Pi', desc:'إعداد وتأمين محفظتك', price:3},
+  {id:'service2', cat:'service', icon:'📊', name:'استشارة Web3', desc:'جلسة استشارية ساعة كاملة', price:8},
+];
+
+function renderProducts(data) {
+  const container = document.getElementById('products');
+  container.innerHTML = data.map(p => `
+    <div class="card">
+      <div class="card-icon">${p.icon}</div>
+      <h3>${p.name}</h3>
+      <p>${p.desc}</p>
+      <div class="price">${p.price} π</div>
+      <button class="btn-buy" onclick="buyProduct('${p.id}','${p.name}',${p.price})">
+        شراء الآن
+      </button>
+    </div>
+  `).join('');
+}
+
+function filter(cat) {
+  document.querySelectorAll('.cat').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  const filtered = cat === 'all' ? products : products.filter(p => p.cat === cat);
+  renderProducts(filtered);
+}
+
+async function loginPi() {
+  try {
+    const auth = await Pi.authenticate(['username','payments'], p => console.log(p));
+    currentUser = auth.user;
+    document.getElementById('username').innerHTML = `✅ ${auth.user.username}`;
+    showToast('مرحباً ' + auth.user.username + '!');
+  } catch(e) {
+    showToast('خطأ في الدخول');
+  }
+}
+
+function buyProduct(id, name, price) {
+  if (!currentUser) {
+    showToast('سجل دخول أولاً!');
+    return;
+  }
+  pendingProduct = {id, name, price};
+  document.getElementById('modal-title').textContent = '🛍️ ' + name;
+  document.getElementById('modal-desc').textContent = `السعر: ${price} π — هل تريد المتابعة؟`;
+  document.getElementById('modal').classList.add('show');
+}
+
+async function confirmBuy() {
+  closeModal();
+  if (!pendingProduct) return;
+  try {
+    await Pi.createPayment({
+      amount: pendingProduct.price,
+      memo: pendingProduct.name,
+      metadata: {productId: pendingProduct.id}
+    },{
+      onReadyForServerApproval: id => console.log('موافقة:', id),
+      onReadyForServerCompletion: (id, txid) => {
+        showToast('✅ تم الشراء بنجاح!');
+      },
+      onCancel: () => showToast('تم الإلغاء'),
+      onError: e => showToast('خطأ: ' + e.message)
+    });
+  } catch(e) {
+    showToast('خطأ في الدفع');
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+renderProducts(products);
 </script>
 </body>
 </html>
