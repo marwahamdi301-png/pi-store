@@ -7,50 +7,40 @@
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
         body { background: #050510; color: #e0e0e0; font-family: sans-serif; text-align: center; padding: 20px; }
-        .card { background: #111125; border: 2px solid #2a2a4a; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-        button { background: #f0a500; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; color: #000; }
+        .card { background: #111125; border: 2px solid #1a1a3a; padding: 25px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        button { background: #f0a500; border: none; padding: 15px; border-radius: 30px; font-weight: bold; cursor: pointer; color: white; width: 100%; font-size: 16px; transition: 0.3s; }
+        button:active { transform: scale(0.98); }
+        .status { color: #00ffcc; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
     <h1>🛍️ Baya PiMarket</h1>
     <div class="card">
-        <p id="user-info">🔒 يرجى تسجيل الدخول</p>
+        <p id="user-info" style="color: #aaa;">🔒 يرجى تسجيل الدخول للبدء</p>
         <button onclick="login()">دخول آمن بـ Pi 🔴</button>
     </div>
     <div class="card">
         <h3>🤖 بوت مراقبة الحيتان (VIP)</h3>
         <p>السعر: 10 π</p>
-        <button id="buy-btn" onclick="transferPi('Whale Bot', 10)" disabled style="opacity:0.5;">شراء الآن</button>
+        <button id="buy-btn" disabled style="opacity: 0.5;">شراء الآن</button>
     </div>
+
     <script>
         const Pi = window.Pi;
-        Pi.init({ version: "2.0", sandbox: true });
+        Pi.init({ version: "2.0", sandbox: true, appId: "70868f02-6902-4146-8800-47963d8d6491" });
 
         async function login() {
             try {
                 const scopes = ['username', 'payments'];
-                const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
-                document.getElementById('user-info').innerText = "✅ مرحباً: " + auth.user.username;
+                const auth = await Pi.authenticate(scopes, (payment) => {
+                    console.log("Payment in progress", payment);
+                });
+                document.getElementById('user-info').innerHTML = "<span class='status'>✅ مرحباً: " + auth.user.username + "</span>";
                 document.getElementById('buy-btn').disabled = false;
                 document.getElementById('buy-btn').style.opacity = "1";
-            } catch (err) { alert("افتح الموقع من Pi Browser فقط"); }
-        }
-
-        function onIncompletePaymentFound(payment) { console.log("Payment incomplete"); }
-
-        async function transferPi(name, amount) {
-            try {
-                await Pi.createPayment({
-                    amount: amount,
-                    memo: "شراء " + name,
-                    metadata: { productName: name }
-                }, {
-                    onReadyForServerApproval: (id) => { console.log("Approval pending: ", id); },
-                    onReadyForServerCompletion: (id, txid) => { alert("🎉 تمت العملية بنجاح!"); },
-                    onCancel: () => alert("تم الإلغاء"),
-                    onError: (e) => alert("خطأ في العملية")
-                });
-            } catch (e) { alert("سجل دخولك أولاً"); }
+            } catch (err) {
+                alert("يرجى فتح الرابط من داخل Pi Browser");
+            }
         }
     </script>
 </body>
