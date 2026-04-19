@@ -1,0 +1,204 @@
+import socket
+import concurrent.futures
+import sys
+from datetime import datetime
+
+# pip install tqdm
+try:
+    from tqdm import tqdm
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
+    print("[!] tqdm غير مثبت - شغّل: pip install tqdm")
+
+COMMON_PORTS = {
+    21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 53: "DNS",
+    80: "HTTP", 110: "POP3", 143: "IMAP", 443: "HTTPS", 445: "SMB",
+    3306: "MySQL", 3389: "RDP", 5432: "PostgreSQL", 6379: "Redis",
+    8080: "HTTP-Alt", 8443: "HTTPS-Alt", 27017: "MongoDB"
+}
+
+VULNERABILITIES = {
+    "FTP":        "[!] FTP بدون تشفير - استخدم SFTP",
+    "Telnet":     "[!!] Telnet خطير جداً - استخدم SSH",
+    "SSH":        "[OK] SSH آمن - تأكد من كلمة مرور قوية",
+    "HTTP":       "[!] HTTP بدون تشفير - انتقل إلى HTTPS",
+    "HTTPS":      "[OK] HTTPS مشفر",
+    "SMB":        "[!!] SMB هدف للهجمات - حدّث النظام",
+    "RDP":        "[!!] RDP عرضة لهجمات - فعّل NLA",
+    "MySQL":      "[!] قاعدة بيانات مكشوفة",
+    "PostgreSQL": "[!] قاعدة بيانات مكشوفة",
+    "Redis":      "[!!] Redis بدون مصادقة - خطر كبير",
+    "MongoDB":    "[!!] MongoDB عرضة للاختراق",
+    "DNS":        "[i] تأكد من تعطيل Zone Transfer",
+    "SMTP":       "[!] تأكد من SPF/DKIM/DMARC",
+    "POP3":       "[!] قد ينقل كلمات المرور بدون تشفير",
+    "IMAP":       "[!] قد ينقل كلمات المرور بدون تشفير",
+}
+
+
+def scan_port(host, port, timeout=1.0):
+    """فحص منفذ واحد مع معالجة الأخطاء بشكل أفضل"""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(timeout)
+            result = s.connect_ex((host, port))
+            return result == 0
+    except socket.timeout:
+        return False
+    except socket.error:
+        return False
+    except Exception:
+        return False
+
+
+def get_port_range():
+    """السماح للمستخدم بتحديد نطاق منافذ مخصص"""
+    print("\nاختر نطاق الفحص:")
+    print("  1) المنافذ الشائعة فقط (افتراضي)")
+    print("  2) نطاق مخصص (مثال: 1-1024)")
+    print("  3) منافذ محددة (مثال: 80,443,8080)")
+
+    choice = input("\nاختيارك (1/2/3): ").strip()
+
+    if choice == "2":
+        try:
+            r = input("أدخل النطاق (مثال: 1-1024): ").strip()
+            start, end = map(int, r.split("-"))
+            if start < 1 or end > 65535 or start > end:
+                raise ValueError
+            ports = {p: COMMON_PORTS.get(p, "Unknown") for p in range(start, end + 1)}
+            print(f"[✓] سيتم فحص {len(ports)} منفذ")
+            return ports
+        except (ValueError, AttributeError):
+            print("[!] نطاق غير صحيح - سيتم استخدام المنافذ الشائعة")
+            return COMMON_PORTS
+
+    elif choice == "3":
+        try:
+            raw = input("أدخل المنافذ مفصولة بفاصلة: ").strip()
+            port_list = [int(p.strip()) for p in raw.split(",")]
+            if any(p < 1 or p > 65535 for p in port_list):
+                raise ValueError
+            ports = {p: COMMON_PORTS.get(p, "Unknown") for p in port_list}
+            print(f"[✓] سيتم فحص {len(ports)} منفذ")
+            return ports
+        except (ValueError, AttributeError):
+            print("[!] منافذ غير صحيحة - سيتم استخدام المنافذ الشائعة")
+            return COMMON_PORTS
+
+    else:
+        return COMMON_PORTS
+
+
+def save_results(ip, host, open_ports, ports_map, filename):
+    """حفظ النتائج في ملف نصي"""
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write("=" * 50 + "\n")
+            f.write("  Vulnerability Scanner - تقرير الفحص\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"الهدف : {host}\n")
+            f.write(f"IP    : {ip}\n")
+            f.write(f"التاريخ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"المنافذ المفتوحة: {len(open_ports)}\n")
+            f.write("=" * 50 + "\n\n")
+
+            if open_ports:
+                for p in sorted(open_ports):
+                    service = ports_map.get(p, "Unknown")
+                    vuln = VULNERABILITIES.get(service, "لا ملاحظات")
+                    f.write(f"Port {p} ({service})\n")
+                    f.write(f"  {vuln}\n\n")
+            else:
+                f.write("لم يتم اكتشاف أي منافذ مفتوحة.\n")
+
+            f.write("=" * 50 + "\n")
+            f.write("انتهى الفحص\n")
+
+        print(f"\n[✓] تم حفظ النتائج في: {filename}")
+    except IOError as e:
+        print(f"\n[!] خطأ في حفظ الملف: {e}")
+
+
+def main():
+    print("=" * 50)
+    print("  Vulnerability Scanner - كاشف الثغرات")
+    print("  للاستخدام القانوني فقط")
+    print("=" * 50)
+
+    # إدخال الهدف مع معالجة الأخطاء
+    host = input("\nأدخل IP أو النطاق: ").strip()
+    if not host:
+        print("[!] خطأ: لم تُدخل أي هدف")
+        sys.exit(1)
+
+    try:
+        ip = socket.gethostbyname(host)
+    except socket.gaierror:
+        print("[!] خطأ: اسم النطاق غير صحيح أو لا يمكن الوصول إليه")
+        sys.exit(1)
+    except socket.timeout:
+        print("[!] خطأ: انتهت مهلة الاتصال")
+        sys.exit(1)
+
+    # اختيار نطاق المنافذ
+    ports_map = get_port_range()
+
+    print(f"\n[✓] IP: {ip}")
+    print(f"[✓] جارٍ فحص {len(ports_map)} منفذ...\n")
+
+    open_ports = []
+
+    # الفحص مع شريط التقدم
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        futures = {executor.submit(scan_port, ip, p): p for p in ports_map}
+
+        if TQDM_AVAILABLE:
+            progress = tqdm(
+                concurrent.futures.as_completed(futures),
+                total=len(futures),
+                desc="جارٍ الفحص",
+                unit="منفذ",
+                ncols=60
+            )
+        else:
+            progress = concurrent.futures.as_completed(futures)
+
+        for future in progress:
+            port = futures[future]
+            try:
+                if future.result():
+                    open_ports.append(port)
+                    service = ports_map.get(port, "Unknown")
+                    if TQDM_AVAILABLE:
+                        tqdm.write(f"  [OPEN] {port} ({service})")
+                    else:
+                        print(f"  [OPEN] {port} ({service})")
+            except Exception:
+                pass
+
+    # عرض النتائج
+    print("\n" + "=" * 50)
+    print(f"النتائج - {len(open_ports)} منفذ مفتوح:")
+
+    for p in sorted(open_ports):
+        service = ports_map.get(p, "Unknown")
+        vuln = VULNERABILITIES.get(service, "لا ملاحظات")
+        print(f"\n  Port {p} ({service})")
+        print(f"  {vuln}")
+
+    print("\n" + "=" * 50)
+
+    # حفظ النتائج
+    save_choice = input("\nهل تريد حفظ النتائج في ملف؟ (y/n): ").strip().lower()
+    if save_choice == "y":
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"scan_{ip}_{timestamp}.txt"
+        save_results(ip, host, open_ports, ports_map, filename)
+
+    print("\nانتهى الفحص ✓")
+
+
+if __name__ == "__main__":
+    main()
