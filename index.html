@@ -6,70 +6,51 @@
     <title>Baya PiMarket - Secure</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <style>
-        body { background: #050510; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; }
-        .card { background: #111125; border: 2px solid #2a2a4a; padding: 20px; border-radius: 15px; margin-bottom: 20px; transition: 0.3s; }
-        .card:hover { border-color: #9b30ff; box-shadow: 0 0 20px rgba(155, 48, 255, 0.3); }
-        button { background: linear-gradient(45deg, #f0a500, #ffcc00); border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .secure-badge { color: #00ff88; font-size: 0.8em; margin-bottom: 15px; display: block; }
+        body { background: #050510; color: #e0e0e0; font-family: sans-serif; text-align: center; padding: 20px; }
+        .card { background: #111125; border: 2px solid #2a2a4a; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        button { background: #f0a500; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; cursor: pointer; color: #000; }
     </style>
 </head>
 <body>
-    <span class="secure-badge">🛡️ اتصال مشفر ومحمي عبر Pi Network</span>
     <h1>🛍️ Baya PiMarket</h1>
-    
     <div class="card">
-        <p id="user-info">🔒 يرجى تسجيل الدخول للوصول للمتجر</p>
+        <p id="user-info">🔒 يرجى تسجيل الدخول</p>
         <button onclick="login()">دخول آمن بـ Pi 🔴</button>
     </div>
-
     <div class="card">
         <h3>🤖 بوت مراقبة الحيتان (VIP)</h3>
         <p>السعر: 10 π</p>
-        <button id="buy-btn" onclick="transferPi('Whale Bot', 10)" disabled style="opacity: 0.5;">شراء (سجل دخول أولاً)</button>
+        <button id="buy-btn" onclick="transferPi('Whale Bot', 10)" disabled style="opacity:0.5;">شراء الآن</button>
     </div>
-
     <script>
         const Pi = window.Pi;
         Pi.init({ version: "2.0", sandbox: true });
 
         async function login() {
             try {
-                // نطلب فقط البيانات الضرورية للحماية
                 const scopes = ['username', 'payments'];
                 const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
-                
-                document.getElementById('user-info').innerText = "✅ مرحباً بك: " + auth.user.username;
+                document.getElementById('user-info').innerText = "✅ مرحباً: " + auth.user.username;
                 document.getElementById('buy-btn').disabled = false;
                 document.getElementById('buy-btn').style.opacity = "1";
-                document.getElementById('buy-btn').innerText = "شراء الآن";
-            } catch (err) { 
-                alert("خطأ: يرجى فتح الموقع من متصفح Pi الرسمي فقط.");
-            }
+            } catch (err) { alert("افتح الموقع من Pi Browser فقط"); }
         }
 
-        function onIncompletePaymentFound(payment) {
-            // نظام حماية تلقائي لاستكمال العمليات التي انقطعت بسبب الإنترنت
-            console.log("هناك عملية معلقة: ", payment.identifier);
-        }
+        function onIncompletePaymentFound(payment) { console.log("Payment incomplete"); }
 
         async function transferPi(name, amount) {
             try {
-                const payment = await Pi.createPayment({
+                await Pi.createPayment({
                     amount: amount,
-                    memo: "شراء آمن لمنتج: " + name,
+                    memo: "شراء " + name,
                     metadata: { productName: name }
                 }, {
-                    onReadyForServerApproval: (id) => {
-                        // هنا نستخدم نظام الحماية للتأكد من الطلب
-                        console.log("الطلب بانتظار الموافقة الرقمية: ", id);
-                    },
-                    onReadyForServerCompletion: (id, txid) => {
-                        alert("🎉 تمت العملية بأمان! الكود متاح الآن في لوحة تحكمك.");
-                    },
-                    onCancel: () => alert("تم إلغاء العملية بأمان."),
-                    onError: (e) => alert("حدث خطأ تقني، لم يتم سحب أي مبالغ.")
+                    onReadyForServerApproval: (id) => { console.log("Approval pending: ", id); },
+                    onReadyForServerCompletion: (id, txid) => { alert("🎉 تمت العملية بنجاح!"); },
+                    onCancel: () => alert("تم الإلغاء"),
+                    onError: (e) => alert("خطأ في العملية")
                 });
-            } catch (e) { alert("يجب تسجيل الدخول أولاً"); }
+            } catch (e) { alert("سجل دخولك أولاً"); }
         }
     </script>
 </body>
