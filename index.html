@@ -3,45 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Baya PiMarket - Secure</title>
+    <title>Baya PiMarket | الإمبراطورية العظمى</title>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #050510; color: #e0e0e0; font-family: sans-serif; text-align: center; padding: 20px; }
-        .card { background: #111125; border: 2px solid #1a1a3a; padding: 25px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        button { background: #f0a500; border: none; padding: 15px; border-radius: 30px; font-weight: bold; cursor: pointer; color: white; width: 100%; font-size: 16px; transition: 0.3s; }
-        button:active { transform: scale(0.98); }
-        .status { color: #00ffcc; margin-top: 10px; font-weight: bold; }
+        :root { --gold: #d4af37; --deep-red: #800000; --royal-blue: #002366; --dark: #050505; }
+        body { background: var(--dark); color: #f0f0f0; font-family: 'Tajawal', sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
+        .empire-container { width: 100%; max-width: 420px; background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 2px solid var(--gold); border-radius: 40px; padding: 40px 20px; box-shadow: 0 0 50px rgba(212, 175, 55, 0.2); position: relative; }
+        .empire-container::before { content: "🏛️"; position: absolute; top: -30px; left: 50%; transform: translateX(-50%); font-size: 40px; background: var(--dark); padding: 10px; border: 2px solid var(--gold); border-radius: 50%; }
+        h1 { color: var(--gold); text-shadow: 0 0 10px var(--gold); margin-bottom: 10px; font-size: 28px; }
+        p { opacity: 0.8; font-size: 15px; line-height: 1.6; }
+        .auth-card { margin-top: 30px; padding: 20px; border-radius: 25px; background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--gold); }
+        .btn-royal { background: linear-gradient(90deg, var(--gold), #f9d976); color: var(--dark); border: none; padding: 18px 30px; border-radius: 50px; font-weight: bold; font-size: 18px; cursor: pointer; width: 100%; transition: 0.3s; box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4); }
+        .btn-royal:hover { transform: scale(1.03); box-shadow: 0 8px 25px var(--gold); }
+        #user-tag { display: none; margin-top: 20px; color: #00ffcc; font-weight: bold; font-size: 19px; animation: glow 1.5s infinite alternate; }
+        @keyframes glow { from { text-shadow: 0 0 5px #00ffcc; } to { text-shadow: 0 0 20px #00ffcc; } }
+        .footer-note { margin-top: 40px; font-size: 11px; color: #555; letter-spacing: 1px; }
     </style>
 </head>
 <body>
-    <h1>🛍️ Baya PiMarket</h1>
-    <div class="card">
-        <p id="user-info" style="color: #aaa;">🔒 يرجى تسجيل الدخول للبدء</p>
-        <button onclick="login()">دخول آمن بـ Pi 🔴</button>
-    </div>
-    <div class="card">
-        <h3>🤖 بوت مراقبة الحيتان (VIP)</h3>
-        <p>السعر: 10 π</p>
-        <button id="buy-btn" disabled style="opacity: 0.5;">شراء الآن</button>
+
+<div class="empire-container">
+    <h1>BAYA PIMARKET</h1>
+    <p>قلعة الحشاشين الرقمية<br>حيث تلتقي عظمة كسرى بذكاء الروم</p>
+
+    <div class="auth-card">
+        <div id="init-ui">
+            <p>لإثبات الولاء للدولة، سجل دخولك عبر شبكة Pi</p>
+            <button class="btn-royal" onclick="activateEmpire()">دخول الملوك 🔴</button>
+        </div>
+        <div id="user-tag"></div>
     </div>
 
-    <script>
-        const Pi = window.Pi;
-        Pi.init({ version: "2.0", sandbox: true, appId: "70868f02-6902-4146-8800-47963d8d6491" });
+    <div style="margin-top: 30px; font-size: 13px;">
+        <span style="color: var(--gold);">الحالة:</span> <span id="sys-status">انتظار القائد...</span>
+    </div>
 
-        async function login() {
-            try {
-                const scopes = ['username', 'payments'];
-                const auth = await Pi.authenticate(scopes, (payment) => {
-                    console.log("Payment in progress", payment);
-                });
-                document.getElementById('user-info').innerHTML = "<span class='status'>✅ مرحباً: " + auth.user.username + "</span>";
-                document.getElementById('buy-btn').disabled = false;
-                document.getElementById('buy-btn').style.opacity = "1";
-            } catch (err) {
-                alert("يرجى فتح الرابط من داخل Pi Browser");
-            }
+    <div class="footer-note">إمبراطورية صلاح • 2026 • مؤمنة بالكامل</div>
+</div>
+
+<script>
+    const Pi = window.Pi;
+    Pi.init({ version: "2.0", sandbox: true, appId: "70868f02-6902-4146-8800-47963d8d6491" });
+
+    async function activateEmpire() {
+        const tag = document.getElementById('user-tag');
+        const ui = document.getElementById('init-ui');
+        const sys = document.getElementById('sys-status');
+        
+        try {
+            sys.innerText = "جاري التحقق من الهوية...";
+            const scopes = ['username', 'payments'];
+            const auth = await Pi.authenticate(scopes, (p) => {});
+            
+            ui.style.display = 'none';
+            tag.style.display = 'block';
+            tag.innerHTML = "🏛️ أهلاً بك يا قيصر: " + auth.user.username;
+            sys.innerText = "تم الاتصال بالخادم الإمبراطوري";
+            
+        } catch (err) {
+            sys.innerText = "خطأ في البروتوكول!";
+            alert("افتح القلعة من Pi Browser لتكتمل المراسم.");
         }
-    </script>
+    }
+</script>
+
 </body>
 </html>
